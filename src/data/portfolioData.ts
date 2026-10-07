@@ -1,282 +1,270 @@
-// All site content lives here. Sections render from these objects, so copy edits never touch layout code.
+// All site content. Sections render from these objects.
+// Content rule: no invented metrics, clients or people. Anything still unconfirmed is marked TODO(content).
 
 export type Accent = 'blue' | 'yellow' | 'red' | 'ink';
 export type Shape = 'square' | 'circle' | 'triangle';
-
-export interface Stat {
-  value: string;
-  label: string;
-}
+export type Theme = 'paper' | 'ink' | 'charcoal';
 
 export const brand = {
-  name: 'PRIMITIVES',
-  descriptor: 'Engineering Collective',
-  email: 'hello@primitives.dev', // TODO(content): replace with the team's real inbox.
-  manifesto: ['WE DESIGN.', 'WE BUILD.', 'WE TEST.', 'WE SECURE.', 'WE SHIP.'],
+  name: 'ORTHO', // Proposed studio name (from "orthogonal"). TODO(content): confirm or replace.
+  descriptor: 'Digital Systems Studio',
+  email: 'hello@ortho.studio', // TODO(content): replace with the team's real inbox.
+  availability: 'Available for select projects',
+  // Only links with a URL are rendered. TODO(content): add real profiles.
+  socials: [
+    { label: 'GitHub', url: '' },
+    { label: 'LinkedIn', url: '' },
+    { label: 'Instagram', url: '' },
+  ],
 } as const;
 
-export const navLinks = [
-  { id: 'team', label: 'Team' },
-  { id: 'work', label: 'Work' },
-  { id: 'process', label: 'Process' },
-  { id: 'security', label: 'Security' },
-  { id: 'lab', label: 'Lab' },
-  { id: 'contact', label: 'Contact' },
+/** Chapters, in page order. `nav` marks the ones listed in the header. */
+export const chapters = [
+  { id: 'top', label: 'Intro', nav: false },
+  { id: 'philosophy', label: 'Philosophy', nav: false },
+  { id: 'people', label: 'People', nav: false },
+  { id: 'work', label: 'Work', nav: true },
+  { id: 'system', label: 'System', nav: true },
+  { id: 'security', label: 'Security', nav: false },
+  { id: 'lab', label: 'Lab', nav: true },
+  { id: 'contact', label: 'Contact', nav: true },
 ] as const;
+
+export const chapterCount = String(chapters.length).padStart(2, '0');
+export const chapterNo = (id: string): string =>
+  String(chapters.findIndex((c) => c.id === id) + 1).padStart(2, '0');
+
+export const philosophy = {
+  statement:
+    'Three disciplines working as one system. We design the interface, engineer what runs behind it, and attack our own work before anyone else can.',
+  principles: [
+    { no: '01', title: 'Precision', shape: 'square', text: 'Every element earns its place. Nothing ships because it looks clever.' },
+    { no: '02', title: 'Resilience', shape: 'circle', text: 'Systems designed to fail safely and recover predictably.' },
+    { no: '03', title: 'Security', shape: 'triangle', text: 'Threat modelling starts at the first sketch, not the last sprint.' },
+  ] satisfies { no: string; title: string; shape: Shape; text: string }[],
+};
 
 export interface TeamMember {
   id: string;
+  index: string;
   letter: string;
-  name: string;
+  name: string; // TODO(content): real names. Empty names render as the role only.
+  lines: [string, string];
+  role: string;
   shape: Shape;
   accent: Accent;
-  role: string;
-  bio: string;
-  domains: string[];
-  stat: Stat;
-  stack: string[];
+  statement: string;
+  disciplines: [string, string, string];
 }
 
+// Order matters: the hero circle hands off to the first shape, and the last
+// shape (triangle) hands off to the first project's geometry.
 export const team: TeamMember[] = [
   {
-    id: 'marcus',
-    letter: 'A',
-    name: 'Marcus Chen',
-    shape: 'square',
-    accent: 'blue',
-    role: 'Systems Architect & Backend Lead',
-    bio: 'Designs backends that keep their promises under load: jobs that run exactly once, APIs that are safe to retry, and services that degrade instead of collapsing.',
-    domains: ['Distributed engines', 'Idempotency', 'Microservices'],
-    stat: { value: '99.999%', label: 'SLA' },
-    stack: ['Go', 'TypeScript', 'PostgreSQL', 'Kafka', 'gRPC', 'Redis'],
-  },
-  {
-    id: 'elena',
+    id: 'b',
+    index: '01',
     letter: 'B',
-    name: 'Elena Rostova',
+    name: '',
+    lines: ['Data', 'Cloud'],
+    role: 'Data + Cloud + Payments',
     shape: 'circle',
     accent: 'yellow',
-    role: 'Cloud & Data Infrastructure Lead',
-    bio: 'Builds the data plane: event streams, metering pipelines and cloud topologies that scale sideways and bill to the cent.',
-    domains: ['Cloud topology', 'Stream telemetry', 'Usage billing'],
-    stat: { value: '1.2B+', label: 'Events / day' },
-    stack: ['AWS', 'Terraform', 'Kubernetes', 'ClickHouse', 'Kafka', 'dbt'],
+    statement: 'Owns the data layer, hosting, secrets and payment integrations.',
+    disciplines: ['PostgreSQL', 'Cloud & deploys', 'Payments'],
   },
   {
-    id: 'darius',
+    id: 'a',
+    index: '02',
+    letter: 'A',
+    name: '',
+    lines: ['Backend', 'Systems'],
+    role: 'Backend + Testing',
+    shape: 'square',
+    accent: 'blue',
+    statement: 'Builds the APIs and business logic, and the tests that keep them honest.',
+    disciplines: ['REST APIs', 'Validation', 'Automated testing'],
+  },
+  {
+    id: 'c',
+    index: '03',
     letter: 'C',
-    name: 'Darius Vance',
+    name: '',
+    lines: ['Frontend', 'Security'],
+    role: 'Frontend + Security',
     shape: 'triangle',
     accent: 'red',
-    role: 'Frontend & Security Lead',
-    bio: 'Builds interfaces that move with intent and systems that assume breach: kinetic UI, passwordless auth and adversarial review of everything we ship.',
-    domains: ['GSAP kinetic UI', 'Zero-trust auth', 'Threat modeling'],
-    stat: { value: '0-Day', label: 'Proofs' },
-    stack: ['TypeScript', 'GSAP', 'WebAuthn', 'CSP', 'Burp Suite', 'OWASP ZAP'],
+    statement: 'Builds the interface from scratch, then attacks everything before release.',
+    disciplines: ['Interfaces', 'Motion', 'Security review'],
   },
 ];
 
 export interface Project {
   id: string;
-  code: string;
+  index: string;
   name: string;
-  accent: Accent;
+  category: [string, string];
   shape: Shape;
-  category: string;
-  tagline: string;
-  metrics: Stat[];
-  tags: string[];
+  accent: Accent;
+  theme: Theme;
+  year: string;
+  summary: string;
   challenge: string;
-  solution: string;
-  codeTitle: string;
-  snippet: string;
+  approach: string;
+  system: string;
+  result: string;
+  stack: string[];
 }
 
+// TODO(content): REVENANT, WRAITH and RAVEN copy below is qualitative, written from each
+// project's one-line positioning. Replace with confirmed details, stack and links.
 export const projects: Project[] = [
   {
-    id: 'kronos',
-    code: '01',
-    name: 'KRONOS ENGINE',
-    accent: 'blue',
-    shape: 'square',
-    category: 'Distributed Systems',
-    tagline: 'Distributed high-throughput job orchestrator.',
-    metrics: [
-      { value: '120k', label: 'req/s' },
-      { value: '<2.4ms', label: 'latency' },
-    ],
-    tags: ['Go', 'Postgres', 'Kafka', 'gRPC'],
-    challenge:
-      'Fan out millions of scheduled jobs across a worker fleet without ever running a job twice, even when workers crash mid-task or the network partitions.',
-    solution:
-      'Lease-based claiming with fencing tokens, an idempotency ledger keyed per attempt, and bounded queues that push back instead of buffering forever.',
-    codeTitle: 'worker/claim.ts',
-    snippet: `const lease = await ledger.claim(job.id, { ttlMs: 30_000 });
-if (!lease) return; // another worker owns this job
-
-try {
-  await run(job, { fencingToken: lease.token });
-  await ledger.complete(job.id, lease.token);
-} catch (err) {
-  await ledger.release(job.id, lease.token, { retryIn: backoff(job) });
-  throw err;
-}`,
-  },
-  {
-    id: 'aura',
-    code: '02',
-    name: 'AURA TELEMETRY',
-    accent: 'yellow',
-    shape: 'circle',
-    category: 'Cloud & Data',
-    tagline: 'Real-time cloud pipeline and metered billing.',
-    metrics: [{ value: '1.4B', label: 'events/day' }],
-    tags: ['Kafka', 'ClickHouse', 'Terraform', 'AWS'],
-    challenge:
-      'Turn a firehose of raw usage events into invoices customers trust, with late and duplicate events arriving from every region.',
-    solution:
-      'Deduplicated ingestion keyed on event IDs, event-time windows with watermarks for late data, and immutable usage rollups that invoices are derived from.',
-    codeTitle: 'rollups/hourly_usage.sql',
-    snippet: `INSERT INTO usage_hourly
-SELECT tenant_id,
-       toStartOfHour(event_time) AS hour,
-       sum(units)                 AS units
-FROM   events FINAL               -- dedupe on event_id
-WHERE  event_time >= {from:DateTime}
-  AND  event_time <  {to:DateTime}
-GROUP  BY tenant_id, hour;`,
-  },
-  {
-    id: 'aegis',
-    code: '03',
-    name: 'AEGIS SECURITY',
-    accent: 'red',
+    id: 'revenant',
+    index: '01',
+    name: 'Revenant',
+    category: ['AI Red Teaming', 'System'],
     shape: 'triangle',
-    category: 'Security',
-    tagline: 'Zero-trust WebAuthn and a hardened WAF gateway.',
-    metrics: [{ value: 'A+', label: 'CSP rating' }],
-    tags: ['WebAuthn', 'CSP', 'WAF', 'TypeScript'],
-    challenge:
-      'Replace phishable passwords for an internal platform and put a gateway in front of legacy services that were never built to face the internet.',
-    solution:
-      'Passkeys with attestation checks and signature counters, nonce-based strict CSP, and a gateway that validates every request against a schema before it reaches a service.',
-    codeTitle: 'gateway/headers.ts',
-    snippet: `res.setHeader('Content-Security-Policy', [
-  "default-src 'self'",
-  \`script-src 'nonce-\${nonce}' 'strict-dynamic'\`,
-  "object-src 'none'",
-  "base-uri 'none'",
-  "frame-ancestors 'none'",
-].join('; '));`,
+    accent: 'red',
+    theme: 'ink',
+    year: '',
+    summary: 'Security orchestration for adversarial testing of AI systems.',
+    challenge: 'Adversarial testing of AI systems is slow, manual and hard to repeat.',
+    approach: 'Treat red-team exercises as orchestrated campaigns instead of one-off sessions.',
+    system: 'An orchestration layer that runs attack scenarios and gathers findings in one place.',
+    result: 'Designed to make AI red teaming repeatable and reviewable.',
+    stack: [],
   },
   {
-    id: 'kinetic',
-    code: '04',
-    name: 'KINETIC LABS',
-    accent: 'ink',
+    id: 'wraith',
+    index: '02',
+    name: 'Wraith',
+    category: ['Authorized Security', 'CTF Platform'],
     shape: 'square',
-    category: 'Creative Computation',
-    tagline: 'Kinetic canvas and creative computation showcase.',
-    metrics: [{ value: '60', label: 'FPS' }],
-    tags: ['Canvas', 'GSAP', 'WebGL', 'TypeScript'],
-    challenge:
-      'Make thousands of animated shapes respond to input on mid-range phones without dropping frames or draining batteries.',
-    solution:
-      'One shared ticker, transform-only animation, object pooling for particles, and adaptive quality that sheds detail before it sheds frames.',
-    codeTitle: 'kinetic/loop.ts',
-    snippet: `gsap.ticker.add((time, deltaMs) => {
-  const budget = 16.6 - deltaMs;
-  quality = budget < 0 ? Math.max(0.5, quality - 0.1) : Math.min(1, quality + 0.02);
-  field.step(deltaMs, quality);
-  field.draw(ctx); // transforms only, no layout reads
-});`,
+    accent: 'blue',
+    theme: 'paper',
+    year: '',
+    summary: 'An authorized security and capture-the-flag platform.',
+    challenge: 'Practising offensive security needs realistic targets that are legal to attack.',
+    approach: 'Purpose-built challenges inside an authorized, isolated environment.',
+    system: 'Challenges are separated from each other and from the platform that hosts them.',
+    result: 'Designed for safe, hands-on security practice.',
+    stack: [],
+  },
+  {
+    id: 'raven',
+    index: '03',
+    name: 'Raven',
+    category: ['OSINT', 'Intelligence'],
+    shape: 'circle',
+    accent: 'yellow',
+    theme: 'charcoal',
+    year: '',
+    summary: 'An open-source intelligence project.',
+    challenge: 'Public information is scattered across many sources and formats.',
+    approach: 'Collect and connect open sources into a single investigative view.',
+    system: 'Sources feed a common model, so findings can be traced back to where they came from.',
+    result: 'Designed to make open-source research faster to organise.',
+    stack: [],
+  },
+  {
+    id: 'ortho',
+    index: '04',
+    name: 'Ortho',
+    category: ['Portfolio', 'Motion System'],
+    shape: 'square',
+    accent: 'ink',
+    theme: 'paper',
+    year: '2026',
+    summary: 'This site. A scroll-driven portfolio built without a UI framework.',
+    challenge: 'Show three disciplines as one team, without a template and without hiding content behind motion.',
+    approach: 'Plain TypeScript, CSS custom properties and GSAP with ScrollTrigger.',
+    system: 'Every scene has full, compact and reduced-motion versions, switched live by media queries.',
+    result: 'Keyboard-accessible throughout, with a reduced-motion version of every scene.',
+    stack: ['Vite', 'TypeScript', 'GSAP', 'ScrollTrigger', 'CSS'],
   },
 ];
 
-export interface PipelineStation {
-  code: string;
-  title: string;
+export interface ProcessStage {
+  word: string;
+  shape: Shape;
   accent: Accent;
-  detail: string;
+  text: string;
+  input: string;
+  output: string;
 }
 
-export const pipeline: PipelineStation[] = [
+export const processStages: ProcessStage[] = [
   {
-    code: '01.',
-    title: 'Spec & Threat Model',
-    accent: 'red',
-    detail: 'Requirements, data flows and abuse cases mapped before a line of code.',
-  },
-  {
-    code: '02.',
-    title: 'Distributed Core',
-    accent: 'blue',
-    detail: 'Idempotent services, explicit contracts and failure modes designed in.',
-  },
-  {
-    code: '03.',
-    title: 'Resilient Test Matrix',
+    word: 'Discover',
+    shape: 'circle',
     accent: 'yellow',
-    detail: 'Unit, integration, load and chaos tests gate every merge.',
+    text: 'Requirements, data flows and a threat model before any code.',
+    input: 'Brief',
+    output: 'Spec + threat model',
   },
   {
-    code: '04.',
-    title: 'Cloud Deploy & Monitor',
+    word: 'Build',
+    shape: 'square',
+    accent: 'blue',
+    text: 'Typed services, interfaces and infrastructure as code.',
+    input: 'Spec',
+    output: 'Working system',
+  },
+  {
+    word: 'Break',
+    shape: 'triangle',
+    accent: 'red',
+    text: 'Tests, load and adversarial review against our own work.',
+    input: 'System',
+    output: 'Findings',
+  },
+  {
+    word: 'Defend',
+    shape: 'square',
     accent: 'ink',
-    detail: 'Infrastructure as code, staged rollouts, and alerts that page a human.',
+    text: 'Fixes verified, monitoring in place, release signed off.',
+    input: 'Findings',
+    output: 'Release',
   },
 ];
 
 export interface AttackVector {
   id: string;
   label: string;
-  short: string;
-  payload: string;
-  defense: string;
-  logs: string[];
+  stages: [string, string, string, string]; // threat, detection, analysis, response
 }
+
+export const securityStages = ['Threat', 'Detection', 'Analysis', 'Response'] as const;
 
 export const attacks: AttackVector[] = [
   {
     id: 'sqli',
     label: 'SQL Injection',
-    short: 'SQLi',
-    payload: "' OR 1=1; --",
-    defense: 'Parameterized query enforced',
-    logs: [
-      `INBOUND  POST /api/search  q="' OR 1=1; --"`,
-      'WAF      signature match: SQL tautology (CRS 942100)',
-      'DB       parameterized query enforced, payload bound as a literal',
-      'RESULT   0 rows leaked',
-      'DEFLECTED  403 · Parameterized Query enforced, 0 vulnerabilities',
+    stages: [
+      `' OR 1=1 --`,
+      'Input outside the expected grammar',
+      'Bound as a parameter, never executed as SQL',
+      'Rejected. Nothing executed.',
     ],
   },
   {
     id: 'xss',
-    label: 'Cross-Site Scripting (XSS)',
-    short: 'XSS',
-    payload: '<img src=x onerror=alert(1)>',
-    defense: 'Output encoding + strict CSP',
-    logs: [
-      'INBOUND  POST /api/comments  body="<img src=x onerror=alert(1)>"',
-      'ENCODER  HTML context: entities escaped before render',
-      "CSP      script-src 'nonce-…' blocks inline handler",
-      'DOM      rendered with textContent, never innerHTML',
-      'DEFLECTED  payload neutralised, 0 scripts executed',
+    label: 'Cross-Site Scripting',
+    stages: [
+      '<img src=x onerror=…>',
+      'Markup in a text-only field',
+      'Encoded on output, inline script blocked by CSP',
+      'Rendered as text. Nothing ran.',
     ],
   },
   {
     id: 'replay',
-    label: 'Replay Attack',
-    short: 'REPLAY',
-    payload: 'POST /transfer  nonce=7f3a…c9',
-    defense: 'Nonce + timestamp window + signature',
-    logs: [
-      'INBOUND  POST /api/transfer  nonce=7f3a…c9  age=312s',
-      'AUTH     signature valid, timestamp outside ±30s window',
-      'NONCE    7f3a…c9 already consumed: replay detected',
-      'SESSION  token revoked, owner notified',
-      'DEFLECTED  401 · replayed request rejected',
+    label: 'Replay',
+    stages: [
+      'Captured request, sent again',
+      'Nonce already used',
+      'Timestamp outside the signed window',
+      'Rejected. Session rotated.',
     ],
   },
 ];
@@ -285,53 +273,32 @@ export interface ProbeEndpoint {
   id: string;
   method: 'GET' | 'POST';
   path: string;
-  service: string;
   latencyMs: [number, number];
   body: Record<string, unknown>;
 }
 
+// A mock API that runs in the browser. Values are illustrative.
 export const probeEndpoints: ProbeEndpoint[] = [
   {
-    id: 'jobs',
+    id: 'health',
     method: 'GET',
-    path: '/v1/jobs/kx-4821',
-    service: 'KRONOS',
-    latencyMs: [1.1, 2.4],
-    body: {
-      id: 'kx-4821',
-      state: 'completed',
-      attempts: 1,
-      lease: { holder: 'worker-07', fencingToken: 3184 },
-      durationMs: 412,
-    },
+    path: '/v1/health',
+    latencyMs: [0.8, 2.2],
+    body: { status: 'ok' },
   },
   {
-    id: 'usage',
+    id: 'projects',
     method: 'GET',
-    path: '/v1/usage?window=1h',
-    service: 'AURA',
-    latencyMs: [3.2, 7.8],
-    body: {
-      tenant: 'acme',
-      window: '1h',
-      units: 1840312,
-      lateEventsReconciled: 214,
-      invoiceDraft: 'inv_draft_8c1e',
-    },
+    path: '/v1/projects',
+    latencyMs: [2.4, 6.5],
+    body: { count: 4, items: ['revenant', 'wraith', 'raven', 'ortho'] },
   },
   {
-    id: 'assert',
+    id: 'echo',
     method: 'POST',
-    path: '/v1/auth/assert',
-    service: 'AEGIS',
-    latencyMs: [4.5, 9.6],
-    body: {
-      verified: true,
-      method: 'webauthn',
-      userVerification: 'required',
-      signCount: 58,
-      session: { ttl: 900, rotation: 'on-privilege-change' },
-    },
+    path: '/v1/echo',
+    latencyMs: [3.1, 8.9],
+    body: { received: { message: 'hello' }, validated: true },
   },
 ];
 
@@ -341,11 +308,3 @@ export const testCards: Record<string, { outcome: 'succeeded' | 'declined'; reas
   '4000000000000002': { outcome: 'declined', reason: 'card_declined' },
   '4000000000009995': { outcome: 'declined', reason: 'insufficient_funds' },
 };
-
-export const projectTypes = [
-  'Backend system',
-  'Cloud & data platform',
-  'Frontend & security',
-  'Full product build',
-  'Security review',
-] as const;

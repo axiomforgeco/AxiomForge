@@ -2,12 +2,30 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 /**
- * Every scene supports three motion modes:
- * - full:    pinned, scrub-driven scenes (large viewports)
- * - compact: short non-pinned reveals (phones, short windows)
- * - reduced: prefers-reduced-motion, so instant states and simple fades
+ * Motion modes. Every scene supports all three:
+ * - full:    pinned, scrubbed scenes (large viewports)
+ * - compact: no pinning; short reveals (phones, short windows)
+ * - reduced: prefers-reduced-motion, so opacity, simple transforms and instant states
  */
 export type MotionMode = 'full' | 'compact' | 'reduced';
+
+/**
+ * Motion language. Geometry is fast and precise, typography slow and weighted,
+ * metadata very fast, and section transitions large and cinematic.
+ */
+export const EASE = {
+  out: 'expo.out',
+  inOut: 'power3.inOut',
+  cinematic: 'power4.inOut',
+  mechanical: 'power2.inOut',
+} as const;
+
+export const DUR = {
+  meta: 0.3,
+  geometry: 0.6,
+  type: 1.2,
+  scene: 1.4,
+} as const;
 
 const CONDITIONS = {
   reduced: '(prefers-reduced-motion: reduce)',
@@ -22,22 +40,22 @@ export function resolveMode(conditions: Conditions): MotionMode {
   return conditions.wide ? 'full' : 'compact';
 }
 
+/** Dev-only QA switch (`?qa`): disables scroll snapping so transitions can be filmed frame by frame. */
+export const QA = import.meta.env.DEV && new URLSearchParams(window.location.search).has('qa');
+
 let mode: MotionMode = 'reduced';
 export const getMode = (): MotionMode => mode;
 export const isReduced = (): boolean => mode === 'reduced';
 
-export function headerOffset(): number {
-  return document.querySelector<HTMLElement>('.site-header')?.offsetHeight ?? 0;
-}
-
 /** Registers plugins and mirrors the active mode on <html data-motion>, which CSS layouts key off. */
 export function initMotion(): void {
   gsap.registerPlugin(ScrollTrigger);
-  gsap.defaults({ ease: 'power3.inOut', duration: 0.6 });
+  gsap.defaults({ ease: EASE.inOut, duration: DUR.geometry });
   gsap.matchMedia().add(CONDITIONS, (ctx) => {
     mode = resolveMode(ctx.conditions ?? {});
     document.documentElement.dataset.motion = mode;
   });
+  if (QA) Object.assign(window, { __ST: ScrollTrigger });
   // Web fonts change text metrics, so pins must be re-measured once they arrive.
   void document.fonts.ready.then(() => ScrollTrigger.refresh());
 }
@@ -45,19 +63,24 @@ export function initMotion(): void {
 type Builder = (ctx: gsap.Context) => void | (() => void);
 
 /**
- * Builds a scene per motion mode. gsap.matchMedia reverts all tweens and
- * ScrollTriggers made inside a builder when the mode changes, so nothing leaks.
+ * Builds a scene per motion mode. gsap.matchMedia reverts every tween and
+ * ScrollTrigger made inside a builder when the mode changes, so nothing leaks.
  */
 export function createScene(scope: Element, builders: Partial<Record<MotionMode, Builder>>): void {
   gsap.matchMedia(scope).add(CONDITIONS, (ctx) => builders[resolveMode(ctx.conditions ?? {})]?.(ctx));
 }
 
-/** Scrolls to an element, accounting for the fixed header and GSAP pin spacers. */
+/** Scrolls to an element, measuring GSAP pin spacers instead of pinned sections. */
 export function scrollToElement(target: HTMLElement): void {
   const parent = target.parentElement;
   const anchor = parent?.classList.contains('pin-spacer') ? parent : target;
-  const top = anchor.getBoundingClientRect().top + window.scrollY - headerOffset();
+  const top = anchor.getBoundingClientRect().top + window.scrollY;
   window.scrollTo({ top, behavior: isReduced() ? 'auto' : 'smooth' });
+}
+
+/** The pin-spacer for a pinned section, or the section itself. */
+export function scrollBox(el: HTMLElement): HTMLElement {
+  return el.parentElement?.classList.contains('pin-spacer') ? el.parentElement : el;
 }
 
 export { gsap, ScrollTrigger };

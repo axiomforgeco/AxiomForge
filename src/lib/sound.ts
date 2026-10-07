@@ -47,14 +47,14 @@ function blip(freq: number, duration: number, type: OscillatorType, gain: number
 }
 
 export const sound = {
-  click: () => blip(1800, 0.035, 'square', 0.05),
-  tick: () => blip(2600, 0.02, 'square', 0.025),
-  impact: () => blip(140, 0.22, 'triangle', 0.35),
+  click: () => blip(1800, 0.03, 'square', 0.02),
+  tick: () => blip(2600, 0.018, 'square', 0.012),
+  impact: () => blip(140, 0.2, 'triangle', 0.12),
   success: () => {
-    blip(880, 0.08, 'square', 0.04);
-    setTimeout(() => blip(1320, 0.12, 'square', 0.04), 90);
+    blip(880, 0.06, 'square', 0.018);
+    setTimeout(() => blip(1320, 0.09, 'square', 0.018), 80);
   },
-  error: () => blip(220, 0.18, 'sawtooth', 0.05),
+  error: () => blip(220, 0.14, 'sawtooth', 0.02),
 };
 
 /** One delegated listener gives every button and link a mechanical click. */

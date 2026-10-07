@@ -1,65 +1,32 @@
-import { brand, team } from '../data/portfolioData';
-import { h, shapeSvg } from '../lib/dom';
+import { chapterCount } from '../data/portfolioData';
+import { h, maskLines, shapeSvg } from '../lib/dom';
+import type { Shape } from '../data/portfolioData';
+
+/** One geometric piece: position wrapper (cursor) › velocity layer › shape (intro + scroll). */
+function piece(shape: Shape, color: 'yellow' | 'red' | 'blue', name: string): HTMLElement {
+  return h(
+    'div',
+    { class: `hero__geo hero__geo--${name}`, 'aria-hidden': 'true', 'data-cursor-shape': shape },
+    h('div', { class: 'hero__geo-v', 'data-velocity': 'drift' }, shapeSvg(shape, color)),
+  );
+}
 
 export function renderHero(): HTMLElement {
   return h(
     'section',
     { id: 'top', class: 'hero', 'aria-labelledby': 'hero-title' },
+    h('div', { class: 'hero__grid-lines', 'aria-hidden': 'true' }, ...Array.from({ length: 13 }, () => h('span'))),
+    h('p', { class: 'hero__system meta' }, h('span', {}, `01 / ${chapterCount}`), h('span', {}, 'Digital systems studio')),
     h(
       'div',
-      { class: 'hero__grid container' },
-      h(
-        'div',
-        { class: 'hero__copy' },
-        h('p', { class: 'eyebrow' }, `${brand.name} — ${brand.descriptor} — 3 Engineers`),
-        h(
-          'h1',
-          { id: 'hero-title', class: 'hero__title' },
-          h('span', { class: 'hero__line', 'data-split': '' }, 'Architects'),
-          h('span', { class: 'hero__line', 'data-split': '' }, 'of Code'),
-          h('span', { class: 'hero__slash' }, '// Proof of Work'),
-        ),
-        h(
-          'p',
-          { class: 'hero__lede' },
-          'Three engineers, three primitives. We design, build, test, secure and ship systems that hold up in production.',
-        ),
-        h(
-          'ul',
-          { class: 'hero__status', 'aria-label': 'Team status' },
-          ...team.map((member) =>
-            h(
-              'li',
-              {},
-              shapeSvg(member.shape, member.accent, 'hero__status-shape'),
-              h('span', { class: 'hero__status-role' }, member.domains[0] ?? member.role),
-              h('span', { class: 'hero__status-state' }, 'ONLINE'),
-            ),
-          ),
-        ),
-        h(
-          'div',
-          { class: 'hero__actions' },
-          h('a', { class: 'btn btn--ink', href: '#work' }, 'View the work'),
-          h('a', { class: 'btn', href: '#contact' }, 'Initiate project'),
-        ),
-      ),
-      h(
-        'div',
-        { class: 'hero__stage', 'aria-hidden': 'true' },
-        h('span', { class: 'hero__bar' }),
-        shapeSvg('circle', 'yellow', 'hero__shape hero__shape--circle'),
-        shapeSvg('square', 'blue', 'hero__shape hero__shape--square'),
-        shapeSvg('triangle', 'red', 'hero__shape hero__shape--triangle'),
-        h('span', { class: 'hero__dot' }),
-        h('span', { class: 'hero__coords' }, 'X:045 Y:090 R:180'),
-      ),
+      { class: 'hero__title-wrap', 'data-velocity': 'stretch' },
+      maskLines('h1', ['We build', 'digital', 'systems.'], { id: 'hero-title', class: 'display hero__title' }),
     ),
-    h(
-      'a',
-      { class: 'scroll-cue', href: '#team' },
-      h('span', { class: 'scroll-cue__block', 'aria-hidden': 'true' }),
-      'Scroll to explore ↓',
-    ),
+    h('div', { class: 'hero__bar', 'aria-hidden': 'true' }, h('div', { class: 'hero__geo-v', 'data-velocity': 'drift' })),
+    piece('circle', 'yellow', 'circle'),
+    piece('triangle', 'red', 'triangle'),
+    piece('square', 'blue', 'square'),
+    h('p', { class: 'hero__disciplines meta' }, `Engineering / Design / Security — ${new Date().getFullYear()}`),
+    h('a', { class: 'hero__scroll', href: '#philosophy', 'aria-label': 'Scroll to philosophy', 'data-cursor': 'Scroll' }, h('span', { class: 'hero__scroll-line', 'aria-hidden': 'true' })),
   );
 }

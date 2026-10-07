@@ -1,45 +1,84 @@
-import { $$ } from '../lib/dom';
-import { createScene, gsap } from '../lib/motion';
-import { splitLetters } from '../lib/splitText';
+import { $, $$ } from '../lib/dom';
+import { createScene, DUR, EASE, gsap } from '../lib/motion';
 
-/** Scene 0: the three primitives fly in, rotate in 45°/90° steps and lock into the composition. */
+/**
+ * The signature moment. On an almost empty canvas the system label ticks in and
+ * the grid draws itself. Four pieces arrive from four directions, meet and overlap
+ * for a beat, then each turns and locks into the final composition. The type rises,
+ * the grid steps back, and only the composition remains.
+ */
 export function animateHero(root: HTMLElement): void {
-  const letters = $$('[data-split]', root).flatMap(splitLetters);
+  const header = $('.site-header');
+  const circle = $('.hero__geo--circle svg', root);
+  const triangle = $('.hero__geo--triangle svg', root);
+  const square = $('.hero__geo--square svg', root);
+  const bar = $('.hero__bar .hero__geo-v', root);
 
-  const intro = (): gsap.core.Timeline =>
-    gsap
-      .timeline({ defaults: { ease: 'power3.inOut', duration: 1.1 } })
-      .from('.hero__shape--square', { x: '-55vw', y: '35vh', rotation: -180 }, 0)
-      .from('.hero__shape--circle', { x: '45vw', y: '-60vh' }, 0.1)
-      .from('.hero__shape--triangle', { x: '25vw', y: '70vh', rotation: 225 }, 0.2)
-      .from('.hero__bar', { scaleX: 0, duration: 0.6 }, 0.8)
-      .from('.hero__dot', { scale: 0, ease: 'steps(3)', duration: 0.3 }, 1.15)
-      .from('.hero__coords', { autoAlpha: 0, ease: 'steps(4)', duration: 0.4 }, 1.2)
-      .from(letters, { yPercent: 110, stagger: 0.03, duration: 0.55, ease: 'power3.out' }, 0.35)
-      .from('.hero__slash', { clipPath: 'inset(0 100% 0 0)', ease: 'steps(10)', duration: 0.6 }, 0.95)
-      .from(
-        '.eyebrow, .hero__lede, .hero__status li, .hero__actions',
-        { y: 24, autoAlpha: 0, stagger: 0.07, duration: 0.5, ease: 'power3.out' },
-        1.0,
-      )
-      .from('.scroll-cue', { autoAlpha: 0, duration: 0.4 }, 1.5);
+  const intro = (): gsap.core.Timeline => {
+    // Meeting point: just above the bar, under the circle.
+    const meet = { x: window.innerWidth * 0.76, y: window.innerHeight * 0.42 };
+    const toMeet = (el: Element): { x: number; y: number } => {
+      const r = el.getBoundingClientRect();
+      return { x: meet.x - (r.left + r.width / 2), y: meet.y - (r.top + r.height / 2) };
+    };
+    const c = toMeet(circle);
+    const t = toMeet(triangle);
+    const s = toMeet(square);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    return gsap
+      .timeline({ defaults: { ease: EASE.mechanical } })
+      .from('.hero__system', { clipPath: 'inset(0 100% 0 0)', duration: DUR.meta, ease: 'steps(10)' }, 0)
+      .fromTo('.hero__grid-lines span', { scaleY: 0, transformOrigin: 'top' }, { scaleY: 1, duration: 0.6, stagger: 0.02, ease: EASE.inOut }, 0.1)
+      // Arrive from four directions and overlap at the meeting point…
+      .fromTo(circle, { x: c.x, y: c.y - vh * 0.7 }, { x: c.x, y: c.y, duration: 0.55 }, 0.3)
+      .fromTo(triangle, { x: t.x + vw * 0.45, y: t.y, rotation: 180 }, { x: t.x, y: t.y, rotation: 90, duration: 0.55 }, 0.36)
+      .fromTo(square, { x: s.x, y: s.y + vh * 0.7, rotation: 45 }, { x: s.x, y: s.y, rotation: 90, duration: 0.55 }, 0.42)
+      .fromTo(bar, { scaleX: 0, transformOrigin: 'left center' }, { scaleX: 1, duration: 0.7, ease: EASE.inOut }, 0.45)
+      // …hold for a beat, then each piece turns a quarter and locks into place.
+      .to([circle, triangle, square], { x: 0, y: 0, rotation: 0, duration: 0.6, ease: EASE.out, stagger: 0.06 }, 1.05)
+      .from('.hero__title .mask__line', { yPercent: 110, duration: DUR.type, stagger: 0.09, ease: EASE.out }, 0.7)
+      // The grid has done its job; it steps back and leaves the canvas empty.
+      .to('.hero__grid-lines span', { scaleY: 0, transformOrigin: 'bottom', duration: 0.6, stagger: { each: 0.02, from: 'end' }, ease: EASE.inOut }, 1.35)
+      .from('.hero__disciplines, .hero__scroll', { autoAlpha: 0, duration: DUR.meta, ease: 'none' }, 1.5)
+      .from(header, { autoAlpha: 0, y: -10, duration: 0.6, ease: EASE.out }, 1.5);
+  };
 
   createScene(root, {
     full: () => {
       intro();
-      // Leaving the hero, the whole composition turns a mechanical quarter turn.
-      gsap.to('.hero__stage', {
-        rotation: 90,
-        yPercent: 12,
-        ease: 'none',
-        scrollTrigger: { trigger: root, start: 'top top', end: 'bottom top', scrub: true },
-      });
+      // Cursor: the pieces sit at different depths.
+      const pieces = $$('.hero__geo, .hero__bar', root);
+      const depth = [0.006, 0.022, 0.034, 0.05];
+      const movers = pieces.map((p) => ({
+        x: gsap.quickTo(p, 'x', { duration: 1, ease: 'power3' }),
+        y: gsap.quickTo(p, 'y', { duration: 1, ease: 'power3' }),
+      }));
+      const onMove = (e: PointerEvent): void => {
+        const dx = e.clientX - window.innerWidth / 2;
+        const dy = e.clientY - window.innerHeight / 2;
+        movers.forEach((m, i) => {
+          m.x(dx * (depth[i] ?? 0.02));
+          m.y(dy * (depth[i] ?? 0.02));
+        });
+      };
+      window.addEventListener('pointermove', onMove, { passive: true });
+
+      // Leaving the hero, layers separate at different speeds.
+      const scroll = { trigger: root, start: 'top top', end: 'bottom top', scrub: true };
+      gsap.to(triangle, { yPercent: -120, ease: 'none', scrollTrigger: scroll });
+      gsap.to(square, { yPercent: -260, ease: 'none', scrollTrigger: scroll });
+      gsap.to('.hero__title', { yPercent: -10, ease: 'none', scrollTrigger: scroll });
+
+      return () => window.removeEventListener('pointermove', onMove);
     },
     compact: () => {
       intro();
     },
     reduced: () => {
-      gsap.from('.hero__stage, .hero__copy', { autoAlpha: 0, duration: 0.4, ease: 'none' });
+      gsap.set('.hero__grid-lines span', { scaleY: 0 });
+      gsap.from(root, { autoAlpha: 0, duration: 0.4, ease: 'none' });
     },
   });
 }

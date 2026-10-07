@@ -1,4 +1,4 @@
-import type { Accent, Shape } from '../data/portfolioData';
+import { chapterNo, type Accent, type Shape } from '../data/portfolioData';
 
 type Child = Node | string | number | false | null | undefined;
 type AttrValue = string | number | boolean | undefined;
@@ -46,10 +46,7 @@ function toNodes(children: Child[]): (Node | string)[] {
 
 export type ShapeColor = Accent | 'paper';
 
-/** The shape colour that reads on top of an accent fill. */
-export const onFill = (accent: Accent): ShapeColor => (accent === 'yellow' ? 'ink' : 'paper');
-
-/** Decorative geometric primitive. Hidden from assistive tech. */
+/** Decorative geometric primitive, hidden from assistive tech. */
 export function shapeSvg(shape: Shape, color: ShapeColor, className = ''): SVGSVGElement {
   const fill = `var(--${color})`;
   const body =
@@ -80,17 +77,30 @@ export function $$<T extends Element = HTMLElement>(selector: string, root: Pare
   return Array.from(root.querySelectorAll<T>(selector));
 }
 
-/** Numbered section header with a 90° rotated label, shared by every scene. */
-export function sectionHead(index: string, label: string, title: string, intro?: string): HTMLElement {
+/**
+ * A heading whose lines sit in overflow masks, ready for weighted line reveals.
+ * Lines are separate blocks visually but read as one sentence.
+ */
+export function maskLines<K extends 'h1' | 'h2' | 'h3' | 'p'>(
+  tag: K,
+  lines: readonly string[],
+  attrs: Record<string, AttrValue> = {},
+): HTMLElementTagNameMap[K] {
+  const el = h(tag, { ...attrs, class: `${String(attrs.class ?? '')} masked`.trim() });
+  lines.forEach((line, i) => {
+    el.append(h('span', { class: 'mask' }, h('span', { class: 'mask__line' }, line)));
+    if (i < lines.length - 1) el.append(' ');
+  });
+  return el;
+}
+
+/** Tiny chapter annotation, e.g. "04 / 08 — WORK". */
+export function chapterLabel(id: string, label: string, total: string): HTMLElement {
   return h(
-    'header',
-    { class: 'section-head' },
-    h('p', { class: 'section-head__label', 'aria-hidden': 'true' }, `${index} / ${label}`),
-    h(
-      'div',
-      { class: 'section-head__main' },
-      h('h2', { class: 'section-head__title', id: `${label.toLowerCase()}-title` }, title),
-      intro ? h('p', { class: 'section-head__intro' }, intro) : null,
-    ),
+    'p',
+    { class: 'chapter-label meta' },
+    h('span', { class: 'chapter-label__no' }, `${chapterNo(id)} / ${total}`),
+    h('span', { class: 'chapter-label__rule', 'aria-hidden': 'true' }),
+    h('span', {}, label),
   );
 }

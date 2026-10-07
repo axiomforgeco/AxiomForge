@@ -1,123 +1,100 @@
-import { attacks, type AttackVector } from '../data/portfolioData';
-import { h, sectionHead, shapeSvg } from '../lib/dom';
-import { strike } from '../animations/security';
-import { isReduced } from '../lib/motion';
+import { attacks, chapterCount, securityStages, type AttackVector } from '../data/portfolioData';
+import { runThreat } from '../animations/security';
+import { chapterLabel, h, maskLines, shapeSvg } from '../lib/dom';
 import { sound } from '../lib/sound';
 
-function timestamp(): string {
-  return new Date().toISOString().slice(11, 23);
-}
-
+/** A visual metaphor, not a dashboard: a threat meets a structured system and is redirected. */
 export function renderSecurity(): HTMLElement {
   let deflected = 0;
   let busy = false;
 
-  const options = attacks.map((attack, i) =>
-    h(
-      'label',
-      { class: 'vector' },
-      h('input', {
-        type: 'radio',
-        name: 'attack-vector',
-        value: attack.id,
-        checked: i === 0,
-        class: 'vector__input',
-      }),
-      h('span', { class: 'vector__short' }, attack.short),
-      h('span', { class: 'vector__label' }, attack.label),
+  const vectors = h(
+    'fieldset',
+    { class: 'vectors' },
+    h('legend', { class: 'meta' }, 'Choose a threat'),
+    ...attacks.map((a, i) =>
+      h(
+        'label',
+        { class: 'vector', 'data-cursor': 'Select' },
+        h('input', { type: 'radio', name: 'threat', value: a.id, checked: i === 0 }),
+        h('span', { class: 'vector__no meta' }, String(i + 1).padStart(2, '0')),
+        h('span', { class: 'vector__label' }, a.label),
+      ),
     ),
   );
 
-  const launch = h('button', { class: 'btn btn--red launch', type: 'button' }, 'Launch attack ▸');
-  const counter = h('span', { class: 'sec-stats__value' }, '000');
-  const shieldState = h('span', { class: 'sec-stats__value', 'data-shield-state': '' }, 'ARMED');
-  const payload = h('p', { class: 'arena__payload' }, attacks[0]?.payload ?? '');
-  const log = h('ol', {
-    class: 'terminal__log',
-    'aria-live': 'polite',
-    'aria-label': 'Defense log',
-  });
+  const run = h('button', { class: 'btn', type: 'button', 'data-cursor': 'Run' }, 'Run simulation');
+  const count = h('span', { class: 'numeral security__count-value' }, '00');
 
-  const appendLog = (line: string, final: boolean): void => {
-    const row = h(
+  const stage = h(
+    'div',
+    { class: 'security__stage', 'aria-hidden': 'true' },
+    h('span', { class: 'security__ground' }),
+    h('div', { class: 'threat', 'data-cursor-shape': 'triangle' }, shapeSvg('triangle', 'red')),
+    h('div', { class: 'core' }, shapeSvg('circle', 'yellow')),
+    h('div', { class: 'defense', 'data-cursor-shape': 'square' }),
+  );
+
+  const states = securityStages.map((label, i) =>
+    h(
       'li',
-      { class: final ? 'terminal__line terminal__line--ok' : 'terminal__line' },
-      h('span', { class: 'terminal__time' }, timestamp()),
-      h('span', {}, final ? `✓ ${line}` : `» ${line}`),
-    );
-    log.append(row);
-    while (log.children.length > 14) log.firstElementChild?.remove();
-    log.scrollTop = log.scrollHeight;
-  };
+      { class: 'state', 'data-state': i },
+      h('span', { class: 'state__mark', 'aria-hidden': 'true' }),
+      h('p', { class: 'state__label meta' }, `${String(i + 1).padStart(2, '0')} ${label}`),
+      h('p', { class: 'state__text' }, '—'),
+    ),
+  );
+  const stateList = h('ol', { class: 'security__states', 'aria-live': 'polite' }, ...states);
 
   const selected = (): AttackVector =>
-    attacks.find(
-      (a) =>
-        a.id ===
-        (document.querySelector<HTMLInputElement>('input[name="attack-vector"]:checked')?.value ??
-          ''),
-    ) ?? attacks[0]!;
+    attacks.find((a) => a.id === vectors.querySelector<HTMLInputElement>('input:checked')?.value) ?? attacks[0]!;
 
-  const fieldset = h(
-    'fieldset',
-    { class: 'vectors' },
-    h('legend', { class: 'mono-label' }, 'Select attack vector'),
-    ...options,
-  );
-  fieldset.addEventListener('change', () => {
-    payload.textContent = selected().payload;
-  });
+  const reset = (): void => {
+    stateList.classList.remove('is-told');
+    states.forEach((st) => {
+      st.classList.remove('is-on');
+      st.querySelector('.state__text')!.textContent = '—';
+    });
+  };
 
-  const arena = h(
-    'div',
-    { class: 'arena', 'aria-hidden': 'true' },
-    h('span', { class: 'arena__grid' }),
-    h('div', { class: 'arena__attacker' }, payload, shapeSvg('triangle', 'red', 'arena__triangle')),
-    h('div', { class: 'arena__shield' }, h('span', { class: 'arena__shield-label' }, 'WAF')),
-    h('div', { class: 'arena__core' }, h('span', {}, 'CORE')),
-    h('span', { class: 'arena__flash' }),
-  );
-
-  launch.addEventListener('click', () => {
+  run.addEventListener('click', () => {
     if (busy) return;
     busy = true;
-    launch.disabled = true;
+    run.disabled = true;
+    reset();
     const attack = selected();
-    payload.textContent = attack.payload;
-    shieldState.textContent = 'ENGAGED';
-    appendLog(`ATTACK   ${attack.label.toUpperCase()} launched`, false);
-
-    void strike(arena, {
-      onImpact: () => {
-        sound.impact();
-        attack.logs.slice(0, -1).forEach((line, i) => {
-          window.setTimeout(() => appendLog(line, false), isReduced() ? 0 : i * 160);
-        });
-      },
+    void runThreat(stage, (i) => {
+      const st = states[i];
+      if (!st) return;
+      st.classList.add('is-on');
+      st.querySelector('.state__text')!.textContent = attack.stages[i] ?? '';
+      if (i === 3) stateList.classList.add('is-told');
+      if (i === 1) sound.impact();
+      else sound.tick();
     }).then(() => {
-      sound.success();
-      appendLog(attack.logs.at(-1) ?? 'DEFLECTED', true);
       deflected += 1;
-      counter.textContent = String(deflected).padStart(3, '0');
-      shieldState.textContent = 'HOLDING';
+      count.textContent = String(deflected).padStart(2, '0');
       busy = false;
-      launch.disabled = false;
+      run.disabled = false;
     });
   });
-
-  appendLog('SHIELD   online · WAF rules loaded · CSP strict', false);
 
   return h(
     'section',
     { id: 'security', class: 'section security', 'aria-labelledby': 'security-title' },
     h(
       'div',
-      { class: 'container security__inner' },
-      sectionHead(
-        '04',
-        'Security',
-        'Attack vs. Defense',
-        'Pick a vector and fire it at our shield. This is a safe in-browser simulation of the controls we ship.',
+      { class: 'container' },
+      chapterLabel('security', 'Security', chapterCount),
+      h(
+        'div',
+        { class: 'security__head' },
+        maskLines('h2', ['Threat,', 'redirected.'], { id: 'security-title', class: 'display security__title' }),
+        h(
+          'p',
+          { class: 'lead' },
+          'A safe, in-browser simulation of how our systems answer an attack: detect it, understand it, send it somewhere harmless.',
+        ),
       ),
       h(
         'div',
@@ -125,32 +102,12 @@ export function renderSecurity(): HTMLElement {
         h(
           'div',
           { class: 'security__controls' },
-          fieldset,
-          launch,
-          h(
-            'dl',
-            { class: 'sec-stats' },
-            h('div', {}, h('dt', {}, 'Threats deflected'), h('dd', {}, counter)),
-            h('div', {}, h('dt', {}, 'Shield'), h('dd', {}, shieldState)),
-            h('div', {}, h('dt', {}, 'Breaches'), h('dd', {}, h('span', { class: 'sec-stats__value' }, '000'))),
-          ),
+          vectors,
+          run,
+          h('p', { class: 'security__count' }, h('span', { class: 'meta' }, 'Redirected'), count),
         ),
-        h(
-          'div',
-          { class: 'security__visual' },
-          arena,
-          h(
-            'div',
-            { class: 'terminal' },
-            h(
-              'p',
-              { class: 'terminal__bar' },
-              h('span', {}, 'defense.log'),
-              h('span', {}, 'tail -f'),
-            ),
-            log,
-          ),
-        ),
+        stage,
+        stateList,
       ),
     ),
   );
