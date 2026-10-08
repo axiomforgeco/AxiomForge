@@ -23,14 +23,19 @@ export function renderSystem(): HTMLElement {
   const display = h(
     'div',
     { class: 'system__display', 'aria-hidden': 'true' },
-    ...processStages.map((st, i) =>
-      maskLines('p', [st.word], { class: 'system__word display', 'data-word': i }),
-    ),
+    ...processStages.map((st, i) => {
+      // Each word is split into letters so it can behave physically: BUILD is
+      // constructed, BREAK fractures, DEFEND reassembles.
+      const word = maskLines('p', [''], { class: 'system__word display', 'data-word': i });
+      word.querySelector('.mask__line')!.append(...Array.from(st.word).map((c) => h('span', { class: 'system__letter' }, c)));
+      return word;
+    }),
   );
 
   return h(
     'section',
-    { id: 'system', class: 'section system', 'aria-labelledby': 'system-title' },
+    { id: 'system', class: 'section system', 'aria-labelledby': 'system-title', 'data-tone': 'cobalt', 'data-from': 'ivory', 'data-wipe': 'diagonal' },
+    h('div', { class: 'plane', 'aria-hidden': 'true' }),
     h(
       'div',
       { class: 'container system__inner' },
@@ -42,6 +47,8 @@ export function renderSystem(): HTMLElement {
       ),
       display,
       h('div', { class: 'system__morph', 'aria-hidden': 'true' }),
+      // The shards the morph breaks into on BREAK and is rebuilt from on DEFEND.
+      h('div', { class: 'system__shards', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('i')),
       h(
         'div',
         { class: 'system__track' },

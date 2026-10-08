@@ -1,5 +1,5 @@
 // Tactile UI sounds synthesised with Web Audio: no audio files. Off by default.
-const STORAGE_KEY = 'primitives:sound';
+const STORAGE_KEY = 'axiomforge:sound';
 
 let ctx: AudioContext | null = null;
 let enabled = readPreference();

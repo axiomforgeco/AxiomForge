@@ -40,7 +40,7 @@ export function resolveMode(conditions: Conditions): MotionMode {
   return conditions.wide ? 'full' : 'compact';
 }
 
-/** Dev-only QA switch (`?qa`): disables scroll snapping so transitions can be filmed frame by frame. */
+/** Dev-only QA switch (`?qa`): exposes ScrollTrigger to the QA scripts. Stripped from production builds. */
 export const QA = import.meta.env.DEV && new URLSearchParams(window.location.search).has('qa');
 
 let mode: MotionMode = 'reduced';
@@ -51,13 +51,13 @@ export const isReduced = (): boolean => mode === 'reduced';
 export function initMotion(): void {
   gsap.registerPlugin(ScrollTrigger);
   gsap.defaults({ ease: EASE.inOut, duration: DUR.geometry });
+  // Mobile address bars resize the viewport while scrolling; re-measuring then causes jumps.
+  ScrollTrigger.config({ ignoreMobileResize: true });
   gsap.matchMedia().add(CONDITIONS, (ctx) => {
     mode = resolveMode(ctx.conditions ?? {});
     document.documentElement.dataset.motion = mode;
   });
-  if (QA) Object.assign(window, { __ST: ScrollTrigger });
-  // Web fonts change text metrics, so pins must be re-measured once they arrive.
-  void document.fonts.ready.then(() => ScrollTrigger.refresh());
+  if (QA) Object.assign(window, { __ST: ScrollTrigger, __gsap: gsap });
 }
 
 type Builder = (ctx: gsap.Context) => void | (() => void);
@@ -70,17 +70,14 @@ export function createScene(scope: Element, builders: Partial<Record<MotionMode,
   gsap.matchMedia(scope).add(CONDITIONS, (ctx) => builders[resolveMode(ctx.conditions ?? {})]?.(ctx));
 }
 
-/** Scrolls to an element, measuring GSAP pin spacers instead of pinned sections. */
-export function scrollToElement(target: HTMLElement): void {
-  const parent = target.parentElement;
-  const anchor = parent?.classList.contains('pin-spacer') ? parent : target;
-  const top = anchor.getBoundingClientRect().top + window.scrollY;
-  window.scrollTo({ top, behavior: isReduced() ? 'auto' : 'smooth' });
-}
-
 /** The pin-spacer for a pinned section, or the section itself. */
 export function scrollBox(el: HTMLElement): HTMLElement {
   return el.parentElement?.classList.contains('pin-spacer') ? el.parentElement : el;
+}
+
+/** Document y of an element's start, measuring pin spacers instead of pinned sections. */
+export function pageTop(el: HTMLElement): number {
+  return scrollBox(el).getBoundingClientRect().top + window.scrollY;
 }
 
 export { gsap, ScrollTrigger };

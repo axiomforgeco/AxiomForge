@@ -1,13 +1,16 @@
-import { projects, type Project, type Shape } from '../data/portfolioData';
-import { h, maskLines, shapeSvg } from '../lib/dom';
+import { projectNo, team, type Project, type Shape } from '../data/portfolioData';
+import { extLink, h, maskLines, shapeSvg } from '../lib/dom';
 import { EASE, gsap, isReduced } from '../lib/motion';
+import { lockScroll } from '../lib/scroll';
 
 /**
  * "Project mode": a full-screen <dialog> (native focus trap, Esc, top layer).
  * Opening expands the project's colour field out of its geometry, then the
- * title and the editorial rows arrive. Closing runs the transition backwards.
+ * title and the mini case study arrive. Closing runs the transition backwards.
+ * `list` is the set it belongs to (the featured three, or the whole archive):
+ * numbering and "next project" follow it.
  */
-export function createCaseStudy(): {
+export function createCaseStudy(list: readonly Project[]): {
   dialog: HTMLDialogElement;
   open: (id: string, origin: Element) => void;
 } {
@@ -16,7 +19,8 @@ export function createCaseStudy(): {
   const wipe = h('div', { class: 'case__wipe', 'aria-hidden': 'true' });
   const content = h('div', { class: 'case__content' });
   const closeBtn = h('button', { class: 'case__close link-btn meta', type: 'button', 'data-cursor': 'Close' }, 'Close ✕');
-  const scroller = h('div', { class: 'case__scroll' }, closeBtn, content);
+  // The case scrolls natively inside itself; the page behind it is held still.
+  const scroller = h('div', { class: 'case__scroll', 'data-lenis-prevent': true }, closeBtn, content);
   const dialog = h('dialog', { class: 'case', 'aria-labelledby': 'case-title' }, signal, wipe, scroller);
 
   // Clip-paths for the expanding shape: `small` sits exactly on the poster's geometry.
@@ -25,26 +29,48 @@ export function createCaseStudy(): {
   let closing = false;
 
   const render = (p: Project): void => {
-    const i = projects.indexOf(p);
-    const next = projects[(i + 1) % projects.length]!;
+    const i = list.indexOf(p);
+    const next = list[(i + 1) % list.length]!;
     // The case opens into the opposite field, so entering it is visibly a change of environment.
     dialog.dataset.theme = p.theme === 'paper' ? 'ink' : 'paper';
 
+    // Only fields with real data are shown: no empty labels.
+    const facts = [
+      p.client ? `Client / ${p.client}` : '',
+      `${p.category[0]} / ${p.category[1]}`,
+      p.year ?? '',
+      p.status,
+    ].filter(Boolean);
     const rows: [string, HTMLElement][] = [
-      ['Challenge', h('p', {}, p.challenge)],
-      ['Approach', h('p', {}, p.approach)],
-      ['System', h('p', {}, p.system)],
-      ['Result', h('p', {}, p.result)],
+      ['What it was', h('p', {}, p.what)],
+      ['The problem', h('p', {}, p.problem)],
+      ['How it is used', h('p', {}, p.usage)],
     ];
-    if (p.stack.length) {
-      rows.push(['Stack', h('ul', { class: 'case__stack' }, ...p.stack.map((s) => h('li', {}, s)))]);
+    if (p.built.length) rows.push(['What we built', h('ul', { class: 'case__stack' }, ...p.built.map((b) => h('li', {}, b)))]);
+    if (p.tech.length) rows.push(['Technology', h('ul', { class: 'case__stack case__tech' }, ...p.tech.map((x) => h('li', {}, x)))]);
+    if (p.flow) rows.push(['Architecture', h('p', { class: 'case__flow' }, p.flow.join('  →  '))]);
+    if (p.outcome) rows.push(['Outcome', h('p', {}, p.outcome)]);
+    if (p.contributors.length) {
+      rows.push([
+        'Team',
+        h(
+          'ul',
+          { class: 'case__team' },
+          ...p.contributors.map((c) => {
+            const m = team.find((t) => t.id === c.who)!;
+            return h('li', {}, h('span', { class: 'case__team-name' }, `${m.first} ${m.last}`), h('span', { class: 'meta' }, c.what));
+          }),
+        ),
+      ]);
     }
+    // A real link, or an honest label for systems that are not public.
+    rows.push(p.url ? ['Live project', extLink(p.url, 'Visit project', p.title, 'case__visit')] : ['Availability', h('p', {}, p.status)]);
 
     const nextBtn = h(
       'button',
       { class: 'case__next', type: 'button', 'data-cursor': 'Next' },
       h('span', { class: 'meta' }, 'Next project'),
-      h('span', { class: 'case__next-name display' }, next.name),
+      h('span', { class: 'case__next-name display' }, next.title),
     );
     nextBtn.addEventListener('click', () => {
       render(next);
@@ -57,9 +83,9 @@ export function createCaseStudy(): {
       h(
         'header',
         { class: 'case__hero' },
-        h('p', { class: 'meta case__kicker' }, `Case study ${p.index} / ${String(projects.length).padStart(2, '0')}`),
-        maskLines('h2', [p.name], { id: 'case-title', class: 'display case__title' }),
-        h('p', { class: 'case__cat meta' }, `${p.category[0]} / ${p.category[1]}${p.year ? ` / ${p.year}` : ''}`),
+        h('p', { class: 'meta case__kicker' }, `Project ${projectNo(list, p)} / ${String(list.length).padStart(2, '0')}`),
+        maskLines('h2', p.lines, { id: 'case-title', class: 'display case__title' }),
+        h('p', { class: 'case__cat meta' }, facts.join('  ·  ')),
         h('div', { class: 'case__geo', 'aria-hidden': 'true' }, shapeSvg(p.shape, p.accent)),
         h('p', { class: 'case__summary' }, p.summary),
       ),
@@ -138,7 +164,7 @@ export function createCaseStudy(): {
   };
 
   const open = (id: string, from: Element): void => {
-    const p = projects.find((x) => x.id === id);
+    const p = list.find((x) => x.id === id);
     if (!p) return;
     const r = from.getBoundingClientRect();
     const onScreen = r.width > 0 && r.bottom > 0 && r.top < window.innerHeight;
@@ -148,6 +174,7 @@ export function createCaseStudy(): {
     render(p);
     scroller.scrollTop = 0;
     dialog.showModal();
+    lockScroll(true);
     closeBtn.focus();
     if (isReduced()) gsap.from(dialog, { autoAlpha: 0, duration: 0.25, ease: 'none' });
     else animateIn(true);
@@ -157,6 +184,7 @@ export function createCaseStudy(): {
     if (closing) return;
     if (isReduced()) {
       dialog.close();
+      lockScroll(false);
       return;
     }
     closing = true;
@@ -165,6 +193,7 @@ export function createCaseStudy(): {
         onComplete: () => {
           closing = false;
           dialog.close();
+          lockScroll(false);
           gsap.set([wipe, scroller, signal], { clearProps: 'all' });
         },
       })

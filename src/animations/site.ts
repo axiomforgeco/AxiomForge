@@ -1,6 +1,7 @@
 import { chapters } from '../data/portfolioData';
 import { $, $$ } from '../lib/dom';
-import { createScene, DUR, EASE, gsap, scrollBox, scrollToElement, ScrollTrigger } from '../lib/motion';
+import { createScene, DUR, EASE, gsap, pageTop, scrollBox, ScrollTrigger } from '../lib/motion';
+import { scrollToY } from '../lib/scroll';
 
 /** Overlay header at the top; compact fixed system bar once the page moves. */
 function headerState(): void {
@@ -14,14 +15,18 @@ function headerState(): void {
 
 /** Telemetry (scroll %, chapter number) and the geometric active-nav marker. */
 function telemetry(): void {
+  const header = $('.site-header');
   const scrollOut = $('[data-telemetry="scroll"]');
-  const chapterOut = $('[data-telemetry="chapter"]');
+  // The Projects page has no chapters: only the scroll readout runs there.
+  const chapterOut = document.querySelector('[data-telemetry="chapter"]');
   const links = $$<HTMLAnchorElement>('[data-nav]');
   const boxes: { id: string; no: string; el: HTMLElement }[] = [];
   chapters.forEach((c, i) => {
     const el = document.getElementById(c.id);
     if (el) boxes.push({ id: c.id, no: String(i + 1).padStart(2, '0'), el });
   });
+  // Archive entries carry their own colour fields; the header follows them too.
+  $$('.archive__group, .entry').forEach((el) => boxes.push({ id: el.id, no: '', el }));
   let current = '';
 
   const update = (progress: number): void => {
@@ -33,7 +38,11 @@ function telemetry(): void {
     }
     if (!active || active.id === current) return;
     current = active.id;
-    chapterOut.textContent = active.no;
+    if (chapterOut) chapterOut.textContent = active.no;
+    // The header takes the tone of the chapter on screen.
+    const tone = active.el.dataset.tone;
+    if (tone && tone !== 'light') header.dataset.tone = tone;
+    else delete header.dataset.tone;
     links.forEach((link) => {
       if (link.dataset.nav === current) link.setAttribute('aria-current', 'true');
       else link.removeAttribute('aria-current');
@@ -48,7 +57,37 @@ function telemetry(): void {
   });
 }
 
-/** In-page links: smooth (or instant) scroll that respects pins, then focus for keyboard users. */
+/**
+ * Colour as motion. A toned section sits on the colour it comes from; its own field
+ * is revealed by an authored wipe while it enters, scrubbed by the scroll.
+ */
+const WIPES: Record<string, [string, string]> = {
+  circle: ['circle(0% at 50% 50%)', 'circle(150% at 50% 50%)'],
+  diagonal: ['polygon(0% 0%, 0% 0%, 0% 0%)', 'polygon(0% 0%, 240% 0%, 0% 240%)'],
+  inset: ['inset(50% 50% 50% 50%)', 'inset(0% 0% 0% 0%)'],
+};
+
+function colourWipes(): void {
+  const run = (): void => {
+    for (const section of $$('[data-wipe]')) {
+      const wipe = WIPES[section.dataset.wipe ?? ''];
+      const plane = section.querySelector(':scope > .plane');
+      if (!wipe || !plane) continue;
+      gsap.fromTo(
+        plane,
+        { clipPath: wipe[0] },
+        {
+          clipPath: wipe[1],
+          ease: EASE.inOut,
+          scrollTrigger: { trigger: section, start: 'top bottom', end: section.offsetHeight > window.innerHeight * 1.2 ? 'top 15%' : 'top top', scrub: 0.3 },
+        },
+      );
+    }
+  };
+  createScene(document.body, { full: run, compact: run });
+}
+
+/** In-page links: one scroll engine, pin-aware positions, then focus for keyboard users. */
 function anchorLinks(): void {
   document.addEventListener('click', (event) => {
     const link = (event.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
@@ -56,7 +95,7 @@ function anchorLinks(): void {
     const target = id ? document.getElementById(id) : null;
     if (!link || !target) return;
     event.preventDefault();
-    scrollToElement(target);
+    scrollToY(pageTop(target));
     if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
     target.focus({ preventScroll: true });
     history.replaceState(null, '', `#${id}`);
@@ -90,18 +129,19 @@ function reveals(): void {
   createScene(document.body, { full: run, compact: run });
 }
 
-/** The page ends in silence: the last primitive slowly leaves the frame. */
+/**
+ * The final shot: the cube from the opening frame drops into the yellow field,
+ * turning less and less, and settles square to the camera as the page ends.
+ */
 function footerExit(): void {
   createScene(document.body, {
     full: () => {
+      const st = { trigger: '.site-footer', start: 'top bottom', end: 'bottom bottom', scrub: 0.4 };
+      gsap.fromTo('.site-footer__orb', { yPercent: -160 }, { yPercent: 0, ease: 'power2.out', scrollTrigger: st });
       gsap.fromTo(
-        '.site-footer__orb',
-        { yPercent: -30 },
-        {
-          yPercent: 70,
-          ease: 'none',
-          scrollTrigger: { trigger: '.site-footer', start: 'top bottom', end: 'bottom bottom', scrub: true },
-        },
+        '.site-footer__orb .cube__turn',
+        { rotationY: -300, rotationX: 50 },
+        { rotationY: 0, rotationX: 0, ease: 'power3.out', scrollTrigger: st },
       );
     },
   });
@@ -109,6 +149,7 @@ function footerExit(): void {
 
 export function animateSite(): void {
   headerState();
+  colourWipes();
   telemetry();
   anchorLinks();
   reveals();

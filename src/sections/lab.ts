@@ -87,6 +87,7 @@ function renderProbe(): HTMLElement {
       },
     });
     gsap.fromTo(code, { yPercent: 40, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.5, ease: EASE.out });
+    gsap.fromTo([text, metaLine], { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.3, stagger: 0.08, delay: 0.45, ease: 'power2.out' });
   });
 
   return h(
@@ -112,8 +113,8 @@ function renderProbe(): HTMLElement {
       'details',
       { class: 'probe__details' },
       h('summary', { class: 'meta', 'data-cursor': 'Inspect' }, 'Headers + body'),
-      h('pre', { class: 'code', tabindex: '0' }, headersOut),
-      h('pre', { class: 'code', tabindex: '0' }, bodyOut),
+      h('pre', { class: 'code', tabindex: '0', 'data-lenis-prevent': true }, headersOut),
+      h('pre', { class: 'code', tabindex: '0', 'data-lenis-prevent': true }, bodyOut),
     ),
     live,
     h('p', { class: 'exp__note' }, 'A mock API. More than five probes in four seconds meets the rate limiter.'),
@@ -307,7 +308,8 @@ function renderPayment(): HTMLElement {
 export function renderLab(): HTMLElement {
   return h(
     'section',
-    { id: 'lab', class: 'section lab', 'aria-labelledby': 'lab-title' },
+    { id: 'lab', class: 'section lab', 'aria-labelledby': 'lab-title', 'data-tone': 'light', 'data-from': 'dark', 'data-wipe': 'diagonal' },
+    h('div', { class: 'plane', 'aria-hidden': 'true' }),
     h(
       'div',
       { class: 'container' },

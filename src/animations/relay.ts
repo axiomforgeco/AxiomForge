@@ -28,15 +28,15 @@ interface Leg {
 const legs: Leg[] = [
   {
     from: { sel: '.hero__geo--circle svg', shape: 'circle', color: 'yellow' },
-    to: { sel: '.people__morph', shape: 'circle', color: 'yellow' },
+    to: { sel: '.ident[data-id="himanshu"] .ident__shape svg', shape: 'square', color: 'blue' },
     trigger: '#people',
     start: 'top bottom',
     endTrigger: '#people',
     end: 'top top',
   },
   {
-    from: { sel: '.people__morph', shape: 'triangle', color: 'red' },
-    to: { sel: '.panel:first-child .panel__geo svg', shape: 'triangle', color: 'red' },
+    from: { sel: '.ident[data-id="ayan"] .ident__shape svg', shape: 'triangle', color: 'red' },
+    to: { sel: '.panel:first-child .panel__geo svg', shape: 'triangle', color: 'yellow' },
     trigger: '#people',
     start: 'bottom bottom',
     endTrigger: '.work__gallery',
@@ -44,14 +44,14 @@ const legs: Leg[] = [
   },
   {
     from: { sel: '.panel:last-child .panel__geo svg', shape: 'square', color: 'ink' },
-    to: { sel: '.system__marker', shape: 'square', color: 'ink' },
+    to: { sel: '.system__marker', shape: 'square', color: 'paper' },
     trigger: '.work__gallery',
     start: 'bottom bottom',
     endTrigger: '#system',
     end: 'top top',
   },
   {
-    from: { sel: '.system__marker', shape: 'square', color: 'ink' },
+    from: { sel: '.system__marker', shape: 'square', color: 'paper' },
     to: { sel: '.defense', shape: 'square', color: 'blue' },
     trigger: '#system',
     start: 'bottom bottom',
@@ -70,8 +70,8 @@ const legs: Leg[] = [
 
 export function initRelay(): void {
   const css = getComputedStyle(document.documentElement);
+  const tone = (stop: Stop): string => css.getPropertyValue(`--${stop.color}`).trim();
   const props = (stop: Stop): gsap.TweenVars => ({
-    backgroundColor: css.getPropertyValue(`--${stop.color}`).trim(),
     borderRadius: stop.shape === 'circle' ? '50%' : '0%',
     clipPath: stop.shape === 'triangle' ? TRIANGLE : SQUARE,
   });
@@ -110,12 +110,15 @@ export function initRelay(): void {
             const a = from.getBoundingClientRect();
             const b = to.getBoundingClientRect();
             const lerp = gsap.utils.interpolate;
+            // Transforms only: a 100px unit square translated and scaled into place.
             gsap.set(relay, {
               x: lerp(a.left, b.left, e),
               y: lerp(a.top, b.top, e),
-              width: lerp(a.width, b.width, e),
-              height: lerp(a.height, b.height, e),
+              scaleX: lerp(a.width, b.width, e) / 100,
+              scaleY: lerp(a.height, b.height, e) / 100,
               ...morph(e),
+              // Colour switches at the midpoint of the hand-off; signals never blend.
+              backgroundColor: e < 0.5 ? tone(leg.from) : tone(leg.to),
             });
           },
         });

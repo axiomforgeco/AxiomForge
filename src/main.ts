@@ -1,3 +1,5 @@
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
 import './style.css';
 
 import { magnetize } from './animations/contact';
@@ -10,7 +12,8 @@ import { animateSystem } from './animations/system';
 import { animateWork } from './animations/work';
 import { initCursor } from './lib/cursor';
 import { $, h } from './lib/dom';
-import { initMotion } from './lib/motion';
+import { initMotion, pageTop, ScrollTrigger } from './lib/motion';
+import { initSmoothScroll, restorePosition } from './lib/scroll';
 import { initSound } from './lib/sound';
 import { initVelocity } from './lib/velocity';
 import { renderFooter, renderHeader } from './sections/chrome';
@@ -39,6 +42,7 @@ $('#app').replaceChildren(
 // Scenes measure real layout, so motion starts after the DOM exists.
 // Pinned scenes are created top to bottom so later triggers include earlier pin spacing.
 initMotion();
+initSmoothScroll();
 animateHero(hero);
 animatePhilosophy(philosophy);
 animatePeople(people);
@@ -51,3 +55,19 @@ initRelay();
 initVelocity();
 initCursor();
 initSound();
+
+// Text metrics move pins, so measure once both type faces are in (or after 1.5s at most).
+// Not on every 'loadingdone': extra unicode subsets load lazily while scrolling, and a
+// full refresh mid-scroll would stall a frame.
+const faces = Promise.all([
+  document.fonts.load('500 1em "Geist Variable"'),
+  document.fonts.load('400 1em "Geist Mono Variable"'),
+]);
+void Promise.race([faces, new Promise((r) => setTimeout(r, 1500))]).then(() => {
+  ScrollTrigger.refresh();
+  // Land on the deep-linked chapter or the position the visitor refreshed from.
+  restorePosition((id) => {
+    const el = document.getElementById(id);
+    return el ? pageTop(el) : null;
+  });
+});

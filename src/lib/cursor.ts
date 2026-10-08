@@ -64,4 +64,21 @@ export function initCursor(): void {
   });
   document.addEventListener('pointerdown', () => cursor.classList.add('is-down'));
   document.addEventListener('pointerup', () => cursor.classList.remove('is-down'));
+
+  // A modal <dialog> (project mode, profiles) renders in the browser's top layer,
+  // above every z-index, so a cursor left on <body> would sit behind it while
+  // `cursor: none` hides the native pointer. The cursor therefore always lives in
+  // the topmost open modal, and comes back to <body> when it closes.
+  const follow = (): void => {
+    const modals = Array.from(document.querySelectorAll('dialog[open]')).filter((d) => d.matches(':modal'));
+    const host = modals[modals.length - 1] ?? document.body;
+    try {
+      if (cursor.parentElement !== host) host.append(cursor);
+      document.documentElement.classList.add('has-cursor');
+    } catch {
+      // Never an invisible pointer: if the custom cursor cannot follow, use the native one.
+      document.documentElement.classList.remove('has-cursor');
+    }
+  };
+  new MutationObserver(follow).observe(document.body, { subtree: true, attributeFilter: ['open'] });
 }

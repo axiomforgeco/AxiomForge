@@ -29,6 +29,7 @@ export function renderSecurity(): HTMLElement {
   const stage = h(
     'div',
     { class: 'security__stage', 'aria-hidden': 'true' },
+    h('p', { class: 'security__word' }, h('span', {}, '')),
     h('span', { class: 'security__ground' }),
     h('div', { class: 'threat', 'data-cursor-shape': 'triangle' }, shapeSvg('triangle', 'red')),
     h('div', { class: 'core' }, shapeSvg('circle', 'yellow')),
@@ -79,9 +80,21 @@ export function renderSecurity(): HTMLElement {
     });
   });
 
+  // The story tells itself once, the first time the stage is in frame.
+  const watch = new IntersectionObserver(
+    ([entry]) => {
+      if (!entry?.isIntersecting) return;
+      watch.disconnect();
+      run.click();
+    },
+    { threshold: 0.75 },
+  );
+  watch.observe(stage);
+
   return h(
     'section',
-    { id: 'security', class: 'section security', 'aria-labelledby': 'security-title' },
+    { id: 'security', class: 'section security', 'aria-labelledby': 'security-title', 'data-tone': 'dark', 'data-from': 'cobalt', 'data-wipe': 'inset' },
+    h('div', { class: 'plane', 'aria-hidden': 'true' }),
     h(
       'div',
       { class: 'container' },
